@@ -1,0 +1,1490 @@
+<!doctype html>
+<!--
+  Albero di decomposizione
+  Sviluppato da Prof.ssa Veronica Rossano (Gruppo di ricerca TELL)
+  Dipartimento di Informatica - Università degli Studi di Bari Aldo Moro
+  con il supporto di Claude Code.
+  Licenza: Creative Commons Attribuzione - Non commerciale - Condividi allo stesso modo 4.0 Internazionale (CC BY-NC-SA 4.0)
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<html lang="it">
+<head>
+<meta name="author" content="Prof.ssa Veronica Rossano - Gruppo di ricerca TELL - Dipartimento di Informatica, Università degli Studi di Bari">
+<meta name="description" content="Editor di alberi di decomposizione top-down per progettare algoritmi, con accorgimenti per DSA e BES.">
+<link rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Albero di decomposizione</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;700&display=swap">
+<style>
+@font-face{font-family:"OpenDyslexic";font-weight:400;font-display:swap;
+  src:url("https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Regular.otf") format("opentype")}
+@font-face{font-family:"OpenDyslexic";font-weight:700;font-display:swap;
+  src:url("https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Bold.otf") format("opentype")}
+
+:root{
+  --bg:#FBF7EC; --panel:#FFFDF7; --ink:#1E2430; --muted:#535c6e; --line:#DCD3BD;
+  --accent:#1D4E89; --accent-ink:#fff; --sel:#D9480F; --danger:#B42318;
+  --font:Verdana, Tahoma, "DejaVu Sans", sans-serif; --ls:0.05em; --lh:1.5;
+}
+[data-theme="bianco"]{--bg:#FFFFFF;--panel:#F7F8FA;--line:#D5D9E0}
+[data-theme="azzurro"]{--bg:#EAF3FB;--panel:#F6FAFE;--line:#C7D9EA}
+[data-theme="giallo"]{--bg:#FFF8D6;--panel:#FFFCEB;--line:#E8DDA6}
+[data-theme="menta"]{--bg:#EAF8EE;--panel:#F5FCF7;--line:#C5E3CE}
+[data-theme="scuro"]{--bg:#1D2230;--panel:#262C3B;--ink:#ECEFF4;--muted:#AEB6C6;--line:#3C4559;--accent:#7FB2F0;--accent-ink:#10141d;--sel:#FF9F5A;--danger:#FF8A80}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;
+  letter-spacing:var(--ls);line-height:var(--lh);display:flex;flex-direction:column}
+h1,h2,h3{line-height:1.3;margin:0}
+kbd{font-family:inherit;font-size:.8em;padding:1px 6px;border:1.5px solid currentColor;border-radius:6px;opacity:.85}
+
+/* ---------- barra superiore ---------- */
+header.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;
+  background:var(--panel);border-bottom:2px solid var(--line)}
+.appname{font-weight:700;font-size:1.05em;margin-right:6px;display:flex;align-items:center;gap:8px}
+.appname .logo{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:20px}
+.status{font-size:.85em;color:var(--muted);margin-left:auto;padding:0 6px}
+.status.dirty{color:var(--sel);font-weight:700}
+.sep{width:2px;align-self:stretch;background:var(--line);margin:2px 4px}
+.btn{font:inherit;letter-spacing:inherit;line-height:1.2;display:inline-flex;align-items:center;gap:6px;
+  padding:8px 12px;min-height:44px;border:2px solid var(--line);border-radius:10px;
+  background:var(--bg);color:var(--ink);cursor:pointer;text-align:left}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.oitem:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--sel);outline-offset:2px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger);border-color:currentColor}
+.btn.small{min-height:36px;padding:4px 10px;font-size:.9em}
+.ico{font-size:1.1em;line-height:1}
+.zoomval{min-width:58px;text-align:center;font-size:.9em}
+.menu{position:relative}
+.menu > summary{list-style:none}
+.menu > summary::-webkit-details-marker{display:none}
+.menu .drop{position:absolute;top:calc(100% + 6px);left:0;z-index:20;background:var(--panel);border:2px solid var(--line);
+  border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+
+/* ---------- area principale ---------- */
+main{flex:1;display:flex;min-height:0}
+#panel{width:380px;flex:none;overflow:auto;background:var(--panel);border-right:2px solid var(--line);padding:14px 16px 40px}
+#canvasWrap{flex:1;overflow:auto;position:relative;cursor:grab;background:var(--bg)}
+#canvasWrap.panning{cursor:grabbing}
+#tree{display:block}
+#tree .node{cursor:pointer}
+#tree .node:hover .front{stroke-width:3.5}
+
+.legend{position:sticky;left:0;bottom:0;display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:6px 12px;
+  font-size:.82em;color:var(--muted);background:color-mix(in srgb, var(--panel) 88%, transparent);border-top:1.5px solid var(--line)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{flex:none}
+.legend .legcred{margin-left:auto}
+.legend a{color:var(--accent);font-weight:700}
+
+/* ---------- pannello ---------- */
+.selhead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.swatch{width:26px;height:26px;border-radius:6px;border:2.5px solid;flex:none}
+.selhead h2{font-size:1.15em}
+.lab{display:block;font-weight:700;margin:12px 0 4px}
+textarea,input[type=text],select{width:100%;font:inherit;letter-spacing:inherit;line-height:inherit;padding:10px 12px;
+  border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+textarea{resize:vertical;min-height:84px}
+.hint{font-size:.85em;color:var(--muted);margin:6px 0 0}
+.warn{font-size:.9em;color:var(--danger);font-weight:700;margin:6px 0 0}
+fieldset{border:2px solid var(--line);border-radius:12px;margin:14px 0 0;padding:8px 12px 12px}
+legend{font-weight:700;padding:0 6px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg .btn{flex:1 1 140px;justify-content:center}
+.seg .btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.seg .btn.v[aria-pressed="true"]{background:#2B8A3E;border-color:#2B8A3E;color:#fff}
+.seg .btn.f[aria-pressed="true"]{background:#B8400B;border-color:#B8400B;color:#fff}
+.check{display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:700}
+.check input{width:24px;height:24px;accent-color:var(--accent)}
+.forall{color:#C92A2A;font-size:1.25em}
+[data-theme="scuro"] .forall{color:#FF8787}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.actions .wide{grid-column:1 / -1}
+.actions .btn{justify-content:center;text-align:center}
+details.box{margin-top:18px;border-top:2px solid var(--line);padding-top:10px}
+details.box > summary{cursor:pointer;font-weight:700;font-size:1.05em;padding:4px 0}
+#outline ul{list-style:none;margin:0;padding-left:18px;border-left:2px dotted var(--line)}
+#outline > ul{padding-left:0;border-left:0}
+#outline li{margin:3px 0}
+.oitem{all:unset;box-sizing:border-box;display:flex;gap:8px;align-items:flex-start;width:100%;padding:5px 8px;border-radius:8px;cursor:pointer;line-height:1.4}
+.oitem:hover{background:color-mix(in srgb, var(--accent) 12%, transparent)}
+.oitem.sel{background:color-mix(in srgb, var(--sel) 18%, transparent);outline:2px solid var(--sel)}
+.oitem .dot{width:14px;height:14px;border-radius:4px;border:2px solid;flex:none;margin-top:4px}
+.oitem .code{font-weight:700;white-space:nowrap}
+.tag{display:inline-block;font-size:.78em;font-weight:700;padding:0 7px;border-radius:999px;border:1.5px solid;margin-left:4px;white-space:nowrap}
+.tag.it{color:#C92A2A}
+.tag.v{color:#2B8A3E}
+.tag.f{color:#B8400B}
+[data-theme="scuro"] .tag.it{color:#FF8787}
+[data-theme="scuro"] .tag.v{color:#69DB7C}
+[data-theme="scuro"] .tag.f{color:#FFA94D}
+.grp{font-size:.8em;font-weight:700;margin:4px 0 0 4px}
+#checks{margin:6px 0 0;padding-left:0;list-style:none}
+#checks li{margin:6px 0}
+#checks .oitem{border:1.5px solid var(--line)}
+.ok{color:#2B8A3E;font-weight:700}
+[data-theme="scuro"] .ok{color:#69DB7C}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.credits{margin-top:22px;padding-top:12px;border-top:2px solid var(--line);font-size:.82em;color:var(--muted);line-height:1.5}
+.credits p{margin:0 0 6px}
+.credits a,.dlg a{color:var(--accent);font-weight:700}
+.cc{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+
+/* ---------- finestre ---------- */
+dialog{border:2px solid var(--line);border-radius:16px;background:var(--panel);color:var(--ink);padding:0;
+  width:min(680px, calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog::backdrop{background:rgba(20,25,35,.45)}
+.dlg{padding:18px 22px 22px;overflow:auto;max-height:calc(100vh - 44px)}
+.dlg h2{margin-bottom:10px}
+.dlg h3{margin:18px 0 6px;font-size:1.05em}
+.dlg p,.dlg li{margin:4px 0}
+.dlg table{border-collapse:collapse;width:100%}
+.dlg td{padding:5px 8px;border-bottom:1.5px solid var(--line);vertical-align:top}
+.dlgclose{float:right}
+.set{display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:center}
+.set output{font-weight:700;margin-left:8px}
+.set input[type=range]{width:calc(100% - 70px);accent-color:var(--accent);vertical-align:middle}
+.bgpick{display:flex;gap:8px;flex-wrap:wrap}
+.bgpick button{width:44px;height:44px;border-radius:10px;border:2.5px solid var(--line);cursor:pointer}
+.bgpick button[aria-pressed="true"]{outline:3px solid var(--sel);outline-offset:2px}
+.preview{margin-top:14px;padding:12px;border:2px dashed var(--line);border-radius:12px}
+
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:12px;display:none;gap:12px;align-items:center;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
+#toast.show{display:flex}
+#toast button{font:inherit;background:transparent;color:inherit;border:2px solid currentColor;border-radius:8px;padding:4px 10px;cursor:pointer}
+#dropHint{position:fixed;inset:0;display:none;place-items:center;background:rgba(29,78,137,.25);z-index:60;font-size:1.6em;font-weight:700;pointer-events:none}
+#dropHint.show{display:grid}
+#dropHint div{background:var(--panel);padding:24px 32px;border-radius:16px;border:3px dashed var(--accent)}
+
+@media (max-width: 860px){
+  main{flex-direction:column}
+  #panel{width:auto;max-height:46vh;border-right:0;border-bottom:2px solid var(--line)}
+  .btn .txt-opt{display:none}
+  .set{grid-template-columns:1fr}
+}
+@page{size:landscape;margin:10mm}
+@media print{
+  header.toolbar,#panel,.legend,#toast{display:none!important}
+  body{background:#fff}
+  main{display:block}
+  #canvasWrap{overflow:visible;background:#fff}
+  #tree{width:100%!important;height:auto!important;max-height:100vh}
+  #tree .selring{display:none}
+  #tree .node{opacity:1!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<header class="toolbar" role="toolbar" aria-label="Comandi">
+  <div class="appname"><span class="logo" aria-hidden="true">🌳</span><span>Albero di decomposizione</span></div>
+  <span class="sep" aria-hidden="true"></span>
+  <button class="btn" id="bNew" title="Nuovo albero vuoto"><span class="ico">📄</span>Nuovo</button>
+  <button class="btn" id="bOpen" title="Apri un file salvato (Ctrl+O)"><span class="ico">📂</span>Apri</button>
+  <button class="btn primary" id="bSave" title="Salva il file sul computer (Ctrl+S)"><span class="ico">💾</span>Salva</button>
+  <details class="menu" id="mExport">
+    <summary class="btn"><span class="ico">⬇️</span>Esporta<span aria-hidden="true">▾</span></summary>
+    <div class="drop">
+      <button class="btn" id="bSaveAs"><span class="ico">💾</span>Salva con nome…</button>
+      <button class="btn" id="bPng"><span class="ico">🖼️</span>Immagine PNG</button>
+      <button class="btn" id="bSvg"><span class="ico">✏️</span>Immagine SVG</button>
+      <button class="btn" id="bTxt"><span class="ico">📝</span>Schema in testo (.txt)</button>
+      <button class="btn" id="bPrint"><span class="ico">🖨️</span>Stampa / PDF</button>
+    </div>
+  </details>
+  <span class="sep" aria-hidden="true"></span>
+  <button class="btn" id="bUndo" title="Annulla (Ctrl+Z)"><span class="ico">↶</span><span class="txt-opt">Annulla</span></button>
+  <button class="btn" id="bRedo" title="Ripeti (Ctrl+Y)"><span class="ico">↷</span><span class="txt-opt">Ripeti</span></button>
+  <span class="sep" aria-hidden="true"></span>
+  <button class="btn" id="bZoomOut" title="Rimpicciolisci" aria-label="Rimpicciolisci">−</button>
+  <span class="zoomval" id="zoomVal" aria-live="polite">100%</span>
+  <button class="btn" id="bZoomIn" title="Ingrandisci" aria-label="Ingrandisci">+</button>
+  <button class="btn" id="bFit" title="Adatta l'albero alla finestra"><span class="ico">⤢</span><span class="txt-opt">Adatta</span></button>
+  <span class="sep" aria-hidden="true"></span>
+  <button class="btn" id="bLook" title="Carattere, colori e spaziatura"><span class="ico">Aa</span>Aspetto</button>
+  <button class="btn" id="bExample" title="Apri l'esempio del magazzino"><span class="ico">📘</span><span class="txt-opt">Esempio</span></button>
+  <button class="btn" id="bHelp" title="Guida e scorciatoie"><span class="ico">❓</span>Guida</button>
+  <span class="status" id="status" aria-live="polite"></span>
+</header>
+
+<main>
+  <aside id="panel" aria-label="Modifica del problema selezionato">
+    <section id="editor">
+      <div class="selhead">
+        <span class="swatch" id="selSwatch" aria-hidden="true"></span>
+        <h2 id="selTitle">Problema</h2>
+      </div>
+
+      <label for="txt" class="lab">Descrizione del problema</label>
+      <textarea id="txt" rows="3" spellcheck="true"></textarea>
+      <p class="hint" id="txtHint">Usa un verbo all'infinito: «Inserire…», «Calcolare…», «Stampare…». <kbd>Invio</kbd> conferma.</p>
+
+      <fieldset id="typeBox">
+        <legend>Tipo di problema</legend>
+        <div class="seg">
+          <button class="btn opt" data-type="rect" aria-pressed="false">▭ Problema</button>
+          <button class="btn opt" data-type="hex" aria-pressed="false">⬡ Selezione (se… allora)</button>
+        </div>
+        <p class="hint" id="hexHint">Nell'esagono scrivi la <b>condizione</b> da verificare. Sotto avrà il ramo <b>VERO</b> e il ramo <b>FALSO</b>.</p>
+      </fieldset>
+
+      <fieldset id="branchBox">
+        <legend>Ramo della selezione padre</legend>
+        <div class="seg">
+          <button class="btn opt v" data-branch="V" aria-pressed="false">✔ VERO</button>
+          <button class="btn opt f" data-branch="F" aria-pressed="false">✘ FALSO</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ripetizione</legend>
+        <label class="check"><input type="checkbox" id="iter"><span><span class="forall">∀</span> Questo problema si ripete «per ogni…»</span></label>
+        <div id="iterBox">
+          <label for="iterLabel" class="lab">Per ogni:</label>
+          <input type="text" id="iterLabel" placeholder="es. Materiale, Richiesta, Alunno…">
+          <p class="warn" id="iterWarn">⚠ Scrivi l'etichetta: per ogni… che cosa?</p>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button class="btn primary wide" id="aChild">＋ Sottoproblema (figlio) <kbd>Tab</kbd></button>
+        <button class="btn primary" id="aChildV" style="background:#2B8A3E;border-color:#2B8A3E;color:#fff">＋ Figlio ramo VERO</button>
+        <button class="btn primary" id="aChildF" style="background:#B8400B;border-color:#B8400B;color:#fff">＋ Figlio ramo FALSO</button>
+        <button class="btn wide" id="aSib">＋ Problema successivo (fratello) <kbd>Invio</kbd></button>
+        <button class="btn" id="aLeft">← Sposta prima</button>
+        <button class="btn" id="aRight">Sposta dopo →</button>
+        <button class="btn" id="aSpeak">🔊 Leggi</button>
+        <button class="btn danger" id="aDel">🗑 Elimina</button>
+      </div>
+    </section>
+
+    <details class="box" open>
+      <summary>📋 Schema in elenco</summary>
+      <div class="row">
+        <button class="btn small" id="speakAll">🔊 Leggi tutto l'albero</button>
+        <button class="btn small" id="speakStop">⏹ Ferma lettura</button>
+      </div>
+      <div id="outline" style="margin-top:8px"></div>
+    </details>
+
+    <details class="box" open>
+      <summary>✅ Controlli <span id="chkCount"></span></summary>
+      <ul id="checks"></ul>
+    </details>
+    <footer class="credits" aria-label="Crediti e licenza">
+      <p>Sviluppato da <b>Prof.ssa Veronica Rossano</b> (Gruppo di ricerca TELL)<br>
+      Dipartimento di Informatica – Università degli Studi di Bari<br>
+      con il supporto di Claude Code.</p>
+      <p>Rilasciato con licenza <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.it" target="_blank" rel="license noopener" class="cc">CC BY-NC-SA 4.0</a><br>
+      (Attribuzione – Non commerciale – Condividi allo stesso modo)</p>
+    </footer>
+  </aside>
+
+  <section id="canvasWrap" aria-label="Disegno dell'albero">
+    <svg id="tree" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Albero di decomposizione"></svg>
+    <div class="legend" aria-label="Legenda">
+      <span><svg width="30" height="20" aria-hidden="true"><rect x="2" y="3" width="26" height="15" rx="3" fill="#E8EEF3" stroke="#1B4F72" stroke-width="2"/></svg>Problema</span>
+      <span><svg width="34" height="20" aria-hidden="true"><path d="M2 10 L9 3 H25 L32 10 L25 17 H9 Z" fill="#E8EEF3" stroke="#1B4F72" stroke-width="2"/></svg>Selezione</span>
+      <span><b class="forall">∀</b> Ripetizione «per ogni»</span>
+      <span><b class="tag v">VERO</b><b class="tag f">FALSO</b> Rami della selezione</span>
+      <span>Fratelli sulla stessa riga = sequenza</span>
+      <span class="legcred">© Prof.ssa V. Rossano – TELL, Dip. Informatica, Università di Bari · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.it" target="_blank" rel="license noopener">CC BY-NC-SA 4.0</a></span>
+    </div>
+  </section>
+</main>
+
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<dialog id="dlgLook" aria-labelledby="lookTitle">
+  <div class="dlg">
+    <button class="btn small dlgclose" data-close>✕ Chiudi</button>
+    <h2 id="lookTitle">Aspetto e leggibilità</h2>
+    <div class="set">
+      <label for="sFont">Carattere</label>
+      <select id="sFont"></select>
+
+      <label for="sSize">Grandezza del testo</label>
+      <div><input type="range" id="sSize" min="13" max="28" step="1"><output id="oSize"></output></div>
+
+      <label for="sLetter">Spazio tra le lettere</label>
+      <div><input type="range" id="sLetter" min="0" max="0.2" step="0.01"><output id="oLetter"></output></div>
+
+      <label for="sLine">Spazio tra le righe</label>
+      <div><input type="range" id="sLine" min="1.2" max="2.2" step="0.1"><output id="oLine"></output></div>
+
+      <span>Colore di sfondo</span>
+      <div class="bgpick" id="bgPick"></div>
+
+      <label for="sColor">Colori delle caselle</label>
+      <select id="sColor">
+        <option value="livello">Un colore per ogni livello (consigliato)</option>
+        <option value="sottoalbero">Un colore per ogni ramo principale (P1, P2, P3…)</option>
+        <option value="classico">Colore unico (stile classico)</option>
+      </select>
+
+      <label for="sAlign">Testo nelle caselle</label>
+      <select id="sAlign">
+        <option value="center">Centrato</option>
+        <option value="left">Allineato a sinistra</option>
+      </select>
+
+      <span>Aiuti visivi</span>
+      <div>
+        <label class="check" style="font-weight:400"><input type="checkbox" id="sFocus"> Evidenzia solo il ramo selezionato (attenua il resto)</label>
+        <label class="check" style="font-weight:400;margin-top:6px"><input type="checkbox" id="sLevels"> Mostra il numero del livello a sinistra</label>
+      </div>
+    </div>
+    <div class="preview">Anteprima: «Inserire il codice del materiale richiesto» — P1.2.1 — ∀ Materiale</div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="sReset">↺ Ripristina impostazioni consigliate</button>
+    </div>
+    <p class="hint">Le impostazioni restano su questo computer e non cambiano il file salvato.</p>
+  </div>
+</dialog>
+
+<dialog id="dlgHelp" aria-labelledby="helpTitle">
+  <div class="dlg">
+    <button class="btn small dlgclose" data-close>✕ Chiudi</button>
+    <h2 id="helpTitle">Guida</h2>
+    <p>L'albero di decomposizione scompone un problema dall'alto verso il basso (<b>top-down</b>). È il punto di partenza per disegnare il diagramma di flusso.</p>
+
+    <h3>Simboli</h3>
+    <table>
+      <tr><td>▭ <b>Rettangolo</b></td><td>Un problema (semplice o da scomporre ancora).</td></tr>
+      <tr><td>⬡ <b>Esagono</b></td><td>Una selezione: contiene una condizione. Sotto ha il ramo <b>VERO</b> e il ramo <b>FALSO</b>; ogni ramo può avere più sottoproblemi.</td></tr>
+      <tr><td><b class="forall">∀</b> <b>Per ogni</b></td><td>Ripetizione: il problema si ripete per ogni elemento indicato dall'etichetta (es. ∀ Materiale). Il simbolo sta sopra la casella che si ripete, sulla linea che arriva dal padre. Non ci sono frecce di ritorno: basta il simbolo.</td></tr>
+      <tr><td><b>Fratelli</b></td><td>Problemi sulla stessa riga, da sinistra a destra, si eseguono in sequenza.</td></tr>
+      <tr><td><b>Codici</b></td><td>P è il programma principale; i figli sono P1, P2, P3; i figli di P1 sono P1.1, P1.2… I codici si aggiornano da soli.</td></tr>
+    </table>
+
+    <h3>Tasti rapidi (quando non stai scrivendo)</h3>
+    <table>
+      <tr><td><kbd>Tab</kbd></td><td>Aggiungi un sottoproblema (figlio)</td></tr>
+      <tr><td><kbd>Invio</kbd></td><td>Aggiungi il problema successivo (fratello)</td></tr>
+      <tr><td><kbd>F2</kbd> o doppio clic</td><td>Scrivi la descrizione</td></tr>
+      <tr><td><kbd>Canc</kbd></td><td>Elimina il problema selezionato</td></tr>
+      <tr><td>Frecce</td><td>↑ padre, ↓ primo figlio, ← → problema vicino sulla stessa riga</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Annulla / Ripeti</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Salva il file</td></tr>
+      <tr><td><kbd>Ctrl</kbd> + rotella</td><td>Zoom. Trascina lo sfondo per spostarti.</td></tr>
+    </table>
+    <p>Mentre scrivi: <kbd>Invio</kbd> conferma, <kbd>Esc</kbd> torna all'albero.</p>
+
+    <h3>Salvare e riaprire</h3>
+    <p><b>💾 Salva</b> scarica un file <b>.albero.json</b> sul computer. Con <b>📂 Apri</b> (o trascinando il file sulla pagina) lo riapri e continui a modificarlo. Il lavoro viene anche conservato automaticamente nel browser, ma salva sempre il file per non perderlo.</p>
+    <p><b>Esporta</b> crea un'immagine PNG o SVG da inserire in una relazione, uno schema testuale da usare per il flowchart, oppure una stampa / PDF.</p>
+
+    <h3>Accorgimenti per la lettura</h3>
+    <p>Da <b>Aa Aspetto</b> puoi scegliere un carattere ad alta leggibilità (Verdana, Lexend, Atkinson Hyperlegible, OpenDyslexic), ingrandire il testo, aumentare lo spazio tra lettere e righe e cambiare lo sfondo. I colori indicano il livello: tutte le caselle dello stesso livello hanno lo stesso colore. I rami VERO/FALSO sono scritti a parole, non solo a colori. Il pulsante 🔊 legge ad alta voce.</p>
+
+    <h3>Crediti e licenza</h3>
+    <p>Sviluppato da <b>Prof.ssa Veronica Rossano</b> (Gruppo di ricerca TELL), Dipartimento di Informatica – Università degli Studi di Bari, con il supporto di Claude Code.</p>
+    <p>Il software è rilasciato con licenza <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.it" target="_blank" rel="license noopener">Creative Commons Attribuzione – Non commerciale – Condividi allo stesso modo 4.0 Internazionale (CC BY-NC-SA 4.0)</a>: puoi usarlo, condividerlo e modificarlo citando l'autrice, senza scopi commerciali e distribuendo le versioni modificate con la stessa licenza.</p>
+    <p>Gli alberi che crei e salvi sono tuoi.</p>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastBtn" hidden></button></div>
+<div id="dropHint"><div>📂 Rilascia qui il file da aprire</div></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Albero di decomposizione — applicazione stand-alone
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const SVGNS = 'http://www.w3.org/2000/svg';
+const FORMAT = 'albero-decomposizione';
+const LS_AUTO = 'albero-decomp-autosave-v1';
+const LS_SET = 'albero-decomp-settings-v1';
+
+let uidC = 0;
+const uid = () => 'n' + Date.now().toString(36) + (uidC++).toString(36);
+
+/* ---------- caratteri ---------- */
+const FONTS = {
+  verdana:  {label:'Verdana (consigliato)', css:'Verdana, Tahoma, "DejaVu Sans", sans-serif'},
+  lexend:   {label:'Lexend', css:'"Lexend", Verdana, sans-serif', google:'Lexend:wght@400;700'},
+  atkinson: {label:'Atkinson Hyperlegible', css:'"Atkinson Hyperlegible", Verdana, sans-serif', google:'Atkinson+Hyperlegible:wght@400;700'},
+  opendys:  {label:'OpenDyslexic', css:'"OpenDyslexic", Verdana, sans-serif',
+             files:[['400','https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Regular.otf'],
+                    ['700','https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Bold.otf']]},
+  arial:    {label:'Arial', css:'Arial, Helvetica, sans-serif'},
+  comic:    {label:'Comic Sans', css:'"Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive'}
+};
+
+/* ---------- colori ---------- */
+const THEMES = {
+  crema:   {bg:'#FBF7EC', line:'#3D5573', pill:'#FFFDF7', muted:'#6b7280'},
+  bianco:  {bg:'#FFFFFF', line:'#3D5573', pill:'#FFFFFF', muted:'#6b7280'},
+  azzurro: {bg:'#EAF3FB', line:'#33506E', pill:'#F6FAFE', muted:'#5b6b80'},
+  giallo:  {bg:'#FFF8D6', line:'#4A4A3A', pill:'#FFFCEB', muted:'#6b6b55'},
+  menta:   {bg:'#EAF8EE', line:'#2F4F44', pill:'#F5FCF7', muted:'#5b7067'},
+  scuro:   {bg:'#1D2230', line:'#AFC2DA', pill:'#262C3B', muted:'#AEB6C6'}
+};
+// [riempimento, bordo/ombra] — testo sempre scuro sul riempimento chiaro (contrasto alto)
+const LEVELS = [
+  ['#D6E8FA','#1D4E89'], ['#D5EFDA','#25683A'], ['#FFEABA','#8A5A00'], ['#E7DCF7','#5A3D91'],
+  ['#FAD7E0','#8F2D4A'], ['#CFEFEE','#1D6362'], ['#F0E0CC','#6B4423']
+];
+const CLASSIC = ['#E8EEF3','#1B4F72'];
+const INK = '#1A1F2B';
+
+/* ---------- stato ---------- */
+const DEFAULT_SETTINGS = {font:'verdana', fontSize:17, letter:0.05, lineH:1.5, theme:'crema', colorMode:'livello', align:'center', focus:false, levels:false};
+let settings = {...DEFAULT_SETTINGS};
+let doc = null;            // {root}
+let selId = null;
+let zoom = 1;
+let dirty = false;
+let fileName = null;
+let fileHandle = null;
+let undoStack = [], redoStack = [];
+let IDX = new Map();
+let L = {};                // risultato del layout
+
+function mk(text = '', type = 'rect', branch = null) {
+  return {id: uid(), text, type, iter: false, iterLabel: '', branch, children: []};
+}
+function ordered(n) {
+  if (n.type !== 'hex') return n.children;
+  return [...n.children.filter(c => c.branch !== 'F'), ...n.children.filter(c => c.branch === 'F')];
+}
+function walk(n, fn, depth = 0, parent = null) {
+  fn(n, depth, parent);
+  ordered(n).forEach(c => walk(c, fn, depth + 1, n));
+}
+function buildIndex() {
+  IDX = new Map();
+  (function rec(n, parent, depth, code, top) {
+    IDX.set(n.id, {node: n, parent, depth, code, top});
+    ordered(n).forEach((c, i) => rec(c, n, depth + 1, depth === 0 ? 'P' + (i + 1) : code + '.' + (i + 1), depth === 0 ? i : top));
+  })(doc.root, null, 0, 'P', -1);
+}
+const info = id => IDX.get(id);
+const sel = () => info(selId)?.node;
+
+/* ---------- esempio ---------- */
+function N(text, opts = {}, children = []) {
+  const n = mk(text, opts.type || 'rect', opts.branch || null);
+  if (opts.iter) { n.iter = true; n.iterLabel = opts.iter; }
+  n.children = children;
+  return n;
+}
+function exampleTree() {
+  return N('Gestione richieste Magazzino bricolage', {}, [
+    N('Inserire la tabella del materiale di magazzino', {}, [
+      N('Inserire nMateriali'),
+      N('Inserire i dati del singolo materiale', {iter: 'Materiale'}, [
+        N('Inserire codice materiale'),
+        N('Inserire descrizione materiale'),
+        N('Inserire il costo del materiale'),
+        N('Inserire prezzo')
+      ])
+    ]),
+    N('Gestire le richieste', {}, [
+      N('Inserire il numero di richieste'),
+      N('Inserire e verificare richiesta', {iter: 'Richiesta'}, [
+        N('Inserire i dettagli della richiesta', {}, [
+          N('Inserire il codice del negozio'),
+          N('Inserire il codice del materiale richiesto'),
+          N('Inserire numero pezzi richiesti')
+        ]),
+        N('Verificare se il numero di pezzi disponibili nel magazzino è sufficiente', {type: 'hex'}, [
+          N('Scrivere "Richiesta accettata"', {branch: 'V'}),
+          N('Calcolare il costo e aggiornare il numero di pezzi nella tabella del magazzino', {branch: 'V'}),
+          N('Scrivere "Richiesta non accettata"', {branch: 'F'})
+        ])
+      ])
+    ]),
+    N('Stampare la tabella aggiornata')
+  ]);
+}
+
+/* =====================================================================
+   Misura del testo e layout
+   ===================================================================== */
+const mctx = document.createElement('canvas').getContext('2d');
+function textW(s, weight, fs) {
+  mctx.font = `${weight} ${fs}px ${FONTS[settings.font].css}`;
+  return mctx.measureText(s).width + settings.letter * fs * s.length;
+}
+function wrap(text, maxW, measure) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (let w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (measure(t) <= maxW) { cur = t; continue; }
+    if (cur) lines.push(cur);
+    while (measure(w) > maxW && w.length > 1) {      // parola troppo lunga: spezzala
+      let k = w.length - 1;
+      while (k > 1 && measure(w.slice(0, k) + '-') > maxW) k--;
+      lines.push(w.slice(0, k) + '-');
+      w = w.slice(k);
+    }
+    cur = w;
+  }
+  if (cur || !lines.length) lines.push(cur);
+  return lines;
+}
+
+function layout() {
+  buildIndex();
+  const fs = settings.fontSize;
+  const lh = fs * settings.lineH;
+  const padX = Math.round(fs * 0.9), padY = Math.round(fs * 0.6);
+  const codeH = Math.round(fs * 1.4);
+  const pillH = Math.round(fs * 1.65);
+  const levelH = [];
+  const hexKids = [];
+  let maxDepth = 0;
+
+  walk(doc.root, (n, d) => {
+    const i = info(n.id);
+    const isHex = n.type === 'hex';
+    const ph = !n.text.trim();
+    const txt = ph ? (d === 0 ? 'Problema principale' : 'scrivi il problema…') : n.text.trim();
+    n._ph = ph;
+    n._lines = wrap(txt, fs * (isHex ? 15 : 10.5), t => textW(t, 400, fs));
+    const tw = Math.max(textW(i.code, 700, fs), ...n._lines.map(l => textW(l, 400, fs)));
+    let h = padY * 2 + codeH + n._lines.length * lh;
+    let slant = 0;
+    if (isHex) { h += fs * 0.4; slant = Math.min(h / 2, fs * 1.5); }
+    let w = Math.max(fs * 7.5, tw + padX * 2 + slant * 2);
+    if (n.iter) w = Math.max(w, textW('∀ ' + (n.iterLabel || '?'), 700, fs * 0.92) + fs * 1.4 + 16);
+    n._w = Math.ceil(w); n._h = Math.ceil(h); n._slant = slant;
+    levelH[d] = Math.max(levelH[d] || 0, n._h);
+    if (isHex && n.children.length) hexKids[d] = true;
+    maxDepth = Math.max(maxDepth, d);
+  });
+
+  const gap = Math.max(86, fs * 5.2);
+  const gapBelow = levelH.map((_, d) => hexKids[d] ? gap * 1.55 : gap);
+  const MX = Math.round(fs * 2.5) + (settings.levels ? fs * 6 : 0);
+  const MY = Math.round(fs * 2) + (doc.root.iter ? pillH + fs : 0);
+  const rowTop = [MY];
+  for (let d = 1; d <= maxDepth; d++) rowTop[d] = rowTop[d - 1] + levelH[d - 1] + gapBelow[d - 1];
+
+  const GX = fs * 1.6, GG = fs * 3.2;
+  (function subW(n) {
+    const ch = ordered(n);
+    if (!ch.length) { n._cw = 0; return n._sw = n._w; }
+    let s = 0;
+    ch.forEach((c, k) => {
+      s += subW(c);
+      if (k) s += (n.type === 'hex' && (c.branch === 'F') !== (ch[k - 1].branch === 'F')) ? GG : GX;
+    });
+    n._cw = s;
+    return n._sw = Math.max(n._w, s);
+  })(doc.root);
+
+  (function place(n, left, d) {
+    n._x = left + n._sw / 2;
+    n._y = rowTop[d] + (levelH[d] - n._h) / 2;
+    const ch = ordered(n);
+    let cl = left + (n._sw - n._cw) / 2;
+    ch.forEach((c, k) => {
+      if (k) cl += (n.type === 'hex' && (c.branch === 'F') !== (ch[k - 1].branch === 'F')) ? GG : GX;
+      place(c, cl, d + 1);
+      cl += c._sw;
+    });
+  })(doc.root, MX, 0);
+
+  const W = Math.ceil(doc.root._sw + MX + fs * 2.5);
+  const H = Math.ceil(rowTop[maxDepth] + levelH[maxDepth] + gap * 0.75 + MY);
+  L = {fs, lh, padX, padY, codeH, pillH, levelH, gapBelow, rowTop, W, H, maxDepth};
+}
+
+/* =====================================================================
+   Disegno SVG
+   ===================================================================== */
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function colorsFor(i) {
+  if (settings.colorMode === 'classico') return CLASSIC;
+  if (settings.colorMode === 'sottoalbero') return i.depth === 0 ? CLASSIC : LEVELS[(i.top + 1) % LEVELS.length];
+  return LEVELS[i.depth % LEVELS.length];
+}
+function shape(type, x, y, w, h, s, attrs, parent) {
+  if (type === 'hex') {
+    const d = `M${x},${y + h / 2} L${x + s},${y} H${x + w - s} L${x + w},${y + h / 2} L${x + w - s},${y + h} H${x + s} Z`;
+    return el('path', {d, ...attrs}, parent);
+  }
+  return el('rect', {x, y, width: w, height: h, rx: 7, ...attrs}, parent);
+}
+
+function drawInto(svg, exporting) {
+  // le immagini esportate e le stampe usano sempre uno sfondo chiaro
+  const themeKey = exporting && settings.theme === 'scuro' ? 'bianco' : settings.theme;
+  const T = THEMES[themeKey];
+  const night = themeKey === 'scuro';
+  const C_ITER = night ? '#FF8787' : '#C92A2A', C_V = night ? '#69DB7C' : '#2B8A3E', C_F = night ? '#FFA94D' : '#B8400B';
+  const fam = FONTS[settings.font].css;
+  const {fs, lh, padX, padY, codeH, pillH, levelH, gapBelow, rowTop, W, H} = L;
+  const ls = (settings.letter * fs).toFixed(2);
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('font-family', fam);
+  svg.setAttribute('letter-spacing', ls);
+  el('rect', {x: 0, y: 0, width: W, height: H, fill: T.bg}, svg);
+
+  const gLines = el('g', {stroke: T.line, 'stroke-width': 2.5, fill: 'none', 'stroke-linecap': 'round'}, svg);
+  const gNodes = el('g', {}, svg);
+  const gPills = el('g', {}, svg);
+
+  // percorso evidenziato (modalità attenzione)
+  let keep = null;
+  if (settings.focus && !exporting && selId) {
+    keep = new Set();
+    let p = info(selId);
+    while (p) { keep.add(p.node.id); p = p.parent ? info(p.parent.id) : null; }
+    walk(sel(), n => keep.add(n.id));
+  }
+  const op = id => (keep && !keep.has(id)) ? 0.28 : 1;
+
+  // numeri di livello
+  if (settings.levels) {
+    for (let d = 0; d <= L.maxDepth; d++) {
+      const t = el('text', {x: fs * 0.8, y: rowTop[d] + levelH[d] / 2, 'dominant-baseline': 'central',
+        'font-size': fs * 0.85, 'font-weight': 700, fill: T.muted}, svg);
+      t.textContent = 'Livello ' + d;
+    }
+  }
+
+  const line = (x1, y1, x2, y2, id, color) =>
+    el('line', {x1, y1, x2, y2, opacity: op(id), stroke: color}, gLines);
+
+  const pill = (cx, cy, text, color, id, dashed) => {
+    const pf = fs * 0.92;
+    const w = textW(text, 700, pf) + fs * 1.4;
+    const g = el('g', {opacity: op(id)}, gPills);
+    el('rect', {x: cx - w / 2, y: cy - pillH / 2, width: w, height: pillH, rx: pillH / 2,
+      fill: T.pill, stroke: color, 'stroke-width': 2.2, 'stroke-dasharray': dashed ? '5 4' : null}, g);
+    const t = el('text', {x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': pf, 'font-weight': 700, fill: color}, g);
+    t.textContent = text;
+  };
+
+  walk(doc.root, (n, d) => {
+    const ch = ordered(n);
+    const x = n._x, bottom = n._y + n._h;
+    const rb = rowTop[d] + levelH[d];
+    const forall = (c, yTop) => {
+      if (c.iter) pill(c._x, (yTop + c._y) / 2, '∀ ' + (c.iterLabel.trim() || '?'), C_ITER, c.id, !c.iterLabel.trim());
+    };
+    if (d === 0 && n.iter) {          // il programma principale non ha padre: linea corta sopra la casella
+      const yTop = n._y - pillH - fs * 0.8;
+      line(x, yTop, x, n._y, n.id, C_ITER);
+      forall(n, yTop);
+    }
+    if (ch.length) {
+      if (n.type === 'hex') {
+        const b1 = rb + gapBelow[d] * 0.26, b2 = rb + gapBelow[d] * 0.52;
+        line(x, bottom, x, b1, n.id);
+        const groups = [['V', ch.filter(c => c.branch !== 'F')], ['F', ch.filter(c => c.branch === 'F')]].filter(g => g[1].length);
+        const gx = groups.map(([, gr]) => (gr[0]._x + gr[gr.length - 1]._x) / 2);
+        line(Math.min(x, ...gx), b1, Math.max(x, ...gx), b1, n.id);
+        groups.forEach(([b, gr], k) => {
+          const col = b === 'V' ? C_V : C_F;
+          line(gx[k], b1, gx[k], b2, n.id, col);
+          if (gr.length > 1) line(gr[0]._x, b2, gr[gr.length - 1]._x, b2, n.id, col);
+          gr.forEach(c => line(c._x, b2, c._x, c._y, c.id, col));
+          pill(gx[k], (b1 + b2) / 2, b === 'V' ? '✔ VERO' : '✘ FALSO', col, n.id);
+          gr.forEach(c => forall(c, b2));
+        });
+      } else {
+        const b = rb + gapBelow[d] * 0.38;
+        line(x, bottom, x, b, n.id);
+        line(Math.min(x, ch[0]._x), b, Math.max(x, ch[ch.length - 1]._x), b, n.id);
+        ch.forEach(c => line(c._x, b, c._x, c._y, c.id));
+        ch.forEach(c => forall(c, b));
+      }
+    }
+
+    // casella
+    const i = info(n.id);
+    const [fill, dark] = colorsFor(i);
+    const g = el('g', {class: 'node', 'data-id': n.id, opacity: op(n.id)}, gNodes);
+    const x0 = x - n._w / 2, y0 = n._y, w = n._w, h = n._h, s = n._slant;
+    const off = Math.max(6, Math.round(fs * 0.45));
+    shape(n.type, x0 - off, y0 - off, w, h, s, {fill: dark}, g);
+    shape(n.type, x0, y0, w, h, s, {class: 'front', fill, stroke: dark, 'stroke-width': 2.2}, g);
+    if (!exporting && n.id === selId) {
+      const m = Math.max(7, fs * 0.45);
+      shape(n.type, x0 - m - off / 2, y0 - m - off / 2, w + 2 * m + off / 2, h + 2 * m + off / 2, s ? s + m * 0.5 : 0,
+        {class: 'selring', fill: 'none', stroke: night ? '#FF9F5A' : '#D9480F', 'stroke-width': 4, rx: 12}, g);
+    }
+    const left = settings.align === 'left';
+    const tx = left ? x0 + padX + s : x;
+    const anchor = left ? 'start' : 'middle';
+    const code = el('text', {x: tx, y: y0 + padY + codeH / 2, 'text-anchor': anchor, 'dominant-baseline': 'central',
+      'font-size': fs, 'font-weight': 700, fill: dark}, g);
+    code.textContent = i.code;
+    n._lines.forEach((ln, k) => {
+      const t = el('text', {x: tx, y: y0 + padY + codeH + lh / 2 + k * lh, 'text-anchor': anchor, 'dominant-baseline': 'central',
+        'font-size': fs, fill: n._ph ? '#6b7280' : INK}, g);
+      t.textContent = ln;
+    });
+    const tt = el('title', {}, g);
+    tt.textContent = i.code + ' – ' + (n.text || '(vuoto)');
+  });
+}
+
+function render() {
+  layout();
+  const svg = $('#tree');
+  drawInto(svg, false);
+  svg.setAttribute('width', Math.round(L.W * zoom));
+  svg.setAttribute('height', Math.round(L.H * zoom));
+  $('#zoomVal').textContent = Math.round(zoom * 100) + '%';
+  renderOutline();
+  renderChecks();
+  updateStatus();
+  $('#bUndo').disabled = !undoStack.length;
+  $('#bRedo').disabled = !redoStack.length;
+}
+
+/* =====================================================================
+   Pannello di modifica
+   ===================================================================== */
+let panelFor = null;
+function renderPanel() {
+  const n = sel(); if (!n) return;
+  const i = info(n.id);
+  const fresh = panelFor !== n.id;
+  panelFor = n.id;
+  const isRoot = !i.parent;
+  const [fill, dark] = colorsFor(i);
+  $('#selSwatch').style.background = fill;
+  $('#selSwatch').style.borderColor = dark;
+  $('#selTitle').textContent = (isRoot ? 'Programma principale ' : (n.type === 'hex' ? 'Selezione ' : 'Problema ')) + i.code
+    + (isRoot ? '' : ` · livello ${i.depth}`);
+  const ta = $('#txt');
+  if (fresh || document.activeElement !== ta) ta.value = n.text;
+  ta.placeholder = isRoot ? 'Es. Gestione richieste magazzino' : (n.type === 'hex' ? 'Es. Il numero di pezzi è sufficiente?' : 'Es. Inserire il codice del materiale');
+  $('#typeBox').hidden = isRoot;
+  $$('[data-type]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === n.type)));
+  $('#hexHint').hidden = n.type !== 'hex';
+  const inHex = i.parent && i.parent.type === 'hex';
+  $('#branchBox').hidden = !inHex;
+  $$('[data-branch]').forEach(b => b.setAttribute('aria-pressed', String(inHex && (n.branch === 'F' ? 'F' : 'V') === b.dataset.branch)));
+  $('#iter').checked = n.iter;
+  $('#iterBox').hidden = !n.iter;
+  const il = $('#iterLabel');
+  if (fresh || document.activeElement !== il) il.value = n.iterLabel;
+  $('#iterWarn').hidden = !(n.iter && !n.iterLabel.trim());
+  const hex = n.type === 'hex';
+  $('#aChild').hidden = hex;
+  $('#aChildV').hidden = !hex;
+  $('#aChildF').hidden = !hex;
+  $('#aSib').hidden = isRoot;
+  $('#aDel').hidden = isRoot;
+  const sibs = isRoot ? [] : siblingsOf(n);
+  const k = sibs.indexOf(n);
+  $('#aLeft').hidden = $('#aRight').hidden = isRoot;
+  $('#aLeft').disabled = k <= 0;
+  $('#aRight').disabled = k < 0 || k >= sibs.length - 1;
+}
+
+function siblingsOf(n) {
+  const p = info(n.id).parent;
+  if (!p) return [];
+  return p.type === 'hex' ? p.children.filter(c => (c.branch === 'F') === (n.branch === 'F')) : p.children;
+}
+
+function renderOutline() {
+  const box = $('#outline');
+  const ul = document.createElement('ul');
+  const item = (n) => {
+    const i = info(n.id);
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.className = 'oitem' + (n.id === selId ? ' sel' : '');
+    b.dataset.id = n.id;
+    const [fill, dark] = colorsFor(i);
+    const dot = document.createElement('span');
+    dot.className = 'dot'; dot.style.background = fill; dot.style.borderColor = dark;
+    if (n.type === 'hex') dot.style.transform = 'rotate(45deg) scale(.85)';
+    const body = document.createElement('span');
+    const code = document.createElement('span');
+    code.className = 'code'; code.textContent = i.code + ' ';
+    body.append(code, document.createTextNode((n.type === 'hex' ? '⬡ ' : '') + (n.text.trim() || '…')));
+    if (n.iter) {
+      const t = document.createElement('span');
+      t.className = 'tag it'; t.textContent = '∀ ' + (n.iterLabel || '?');
+      body.append(t);
+    }
+    b.append(dot, body);
+    li.append(b);
+    const ch = ordered(n);
+    if (ch.length) {
+      if (n.type === 'hex') {
+        for (const [br, lab, cls] of [['V', '✔ VERO', 'v'], ['F', '✘ FALSO', 'f']]) {
+          const gr = ch.filter(c => (c.branch === 'F' ? 'F' : 'V') === br);
+          if (!gr.length) continue;
+          const sub = document.createElement('ul');
+          const h = document.createElement('div');
+          h.className = 'grp'; h.innerHTML = `<span class="tag ${cls}">${lab}</span>`;
+          sub.append(h);
+          gr.forEach(c => sub.append(item(c)));
+          li.append(sub);
+        }
+      } else {
+        const sub = document.createElement('ul');
+        ch.forEach(c => sub.append(item(c)));
+        li.append(sub);
+      }
+    }
+    return li;
+  };
+  ul.append(item(doc.root));
+  box.replaceChildren(ul);
+}
+
+function renderChecks() {
+  const out = [];
+  walk(doc.root, (n, d) => {
+    const i = info(n.id);
+    const ch = ordered(n);
+    if (!n.text.trim()) out.push([n.id, `${i.code}: manca la descrizione.`]);
+    if (n.iter && !n.iterLabel.trim()) out.push([n.id, `${i.code}: ripetizione ∀ senza etichetta. Per ogni… che cosa?`]);
+    if (n.type === 'hex' && !ch.length) out.push([n.id, `${i.code}: la selezione non ha rami. Aggiungi almeno un figlio nel ramo VERO.`]);
+    if (n.type === 'hex' && ch.length && !ch.some(c => c.branch !== 'F')) out.push([n.id, `${i.code}: c'è solo il ramo FALSO. Prova a riscrivere la condizione al contrario.`]);
+    if (n.type !== 'hex' && ch.length === 1 && !ch[0].iter) out.push([n.id, `${i.code}: ha un solo sottoproblema. Di solito una scomposizione ne ha almeno due.`]);
+  });
+  if (!doc.root.children.length) out.unshift([doc.root.id, 'Inizia a scomporre il problema principale: premi Tab o «＋ Sottoproblema».']);
+  const ul = $('#checks');
+  ul.replaceChildren();
+  $('#chkCount').textContent = out.length ? `(${out.length})` : '';
+  if (!out.length) {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="ok">✔ Tutto in ordine.</span>';
+    ul.append(li);
+    return;
+  }
+  for (const [id, msg] of out) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.className = 'oitem'; b.dataset.id = id;
+    b.textContent = '⚠ ' + msg;
+    li.append(b); ul.append(li);
+  }
+}
+
+/* =====================================================================
+   Modifiche, cronologia, salvataggio automatico
+   ===================================================================== */
+const snapshot = () => JSON.stringify({root: strip(doc.root), selId});
+function strip(n) {
+  return {id: n.id, text: n.text, type: n.type, iter: n.iter, iterLabel: n.iterLabel, branch: n.branch, children: n.children.map(strip)};
+}
+function pushHistory() {
+  undoStack.push(snapshot());
+  if (undoStack.length > 200) undoStack.shift();
+  redoStack = [];
+}
+function restore(s) {
+  const o = JSON.parse(s);
+  doc.root = o.root;
+  buildIndex();
+  selId = IDX.has(o.selId) ? o.selId : doc.root.id;
+}
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(snapshot());
+  restore(undoStack.pop());
+  changed(true);
+}
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(snapshot());
+  restore(redoStack.pop());
+  changed(true);
+}
+function commit(fn) {
+  pushHistory();
+  fn();
+  changed(true);
+}
+function changed(panel) {
+  dirty = true;
+  autosave();
+  render();
+  if (panel) renderPanel();
+}
+function autosave() {
+  try { localStorage.setItem(LS_AUTO, JSON.stringify({root: strip(doc.root), fileName, savedAt: Date.now(), dirty})); } catch (e) {}
+}
+function updateStatus() {
+  const s = $('#status');
+  const name = fileName || 'albero senza nome';
+  s.textContent = dirty ? '● ' + name + ' — modifiche da salvare'
+    : fileName ? '✓ ' + name + ' — salvato' : 'Non ancora salvato su file';
+  s.classList.toggle('dirty', dirty);
+  document.title = (dirty ? '● ' : '') + (doc.root.text.trim() || 'Albero di decomposizione');
+}
+
+function select(id, focusText) {
+  if (!IDX.has(id)) return;
+  selId = id;
+  render();
+  renderPanel();
+  scrollToNode(id);
+  if (focusText) { const ta = $('#txt'); ta.focus(); ta.select(); }
+}
+
+function addChild(branch) {
+  const p = sel();
+  const n = mk('', 'rect', p.type === 'hex' ? (branch || 'V') : null);
+  commit(() => {
+    if (p.type === 'hex' && branch === 'V') {
+      // inserisci dopo l'ultimo figlio del ramo VERO
+      let last = -1;
+      p.children.forEach((c, k) => { if (c.branch !== 'F') last = k; });
+      p.children.splice(last + 1, 0, n);
+    } else p.children.push(n);
+    selId = n.id;
+  });
+  select(n.id, true);
+}
+function addSibling() {
+  const cur = sel();
+  const p = info(cur.id).parent;
+  if (!p) return addChild('V');
+  const n = mk('', 'rect', p.type === 'hex' ? (cur.branch === 'F' ? 'F' : 'V') : null);
+  commit(() => {
+    p.children.splice(p.children.indexOf(cur) + 1, 0, n);
+    selId = n.id;
+  });
+  select(n.id, true);
+}
+function delNode() {
+  const n = sel();
+  const p = info(n.id).parent;
+  if (!p) return;
+  let count = 0; walk(n, () => count++);
+  const sibs = ordered(p);
+  const k = sibs.indexOf(n);
+  commit(() => {
+    p.children.splice(p.children.indexOf(n), 1);
+    const rest = ordered(p);
+    selId = rest.length ? rest[Math.min(k, rest.length - 1)].id : p.id;
+  });
+  select(selId);
+  toast(count > 1 ? `Eliminati ${count} problemi.` : 'Problema eliminato.', 'Annulla', undo);
+}
+function move(dir) {
+  const n = sel();
+  const p = info(n.id).parent;
+  if (!p) return;
+  const sibs = siblingsOf(n);
+  const k = sibs.indexOf(n);
+  const other = sibs[k + dir];
+  if (!other) return;
+  commit(() => {
+    const a = p.children.indexOf(n), b = p.children.indexOf(other);
+    p.children[a] = other; p.children[b] = n;
+  });
+  select(n.id);
+}
+function setType(t) {
+  const n = sel();
+  if (n.type === t || !info(n.id).parent) return;
+  commit(() => {
+    n.type = t;
+    n.children.forEach(c => c.branch = t === 'hex' ? (c.branch === 'F' ? 'F' : 'V') : null);
+  });
+}
+function setBranch(b) {
+  const n = sel();
+  if (n.branch === b) return;
+  commit(() => { n.branch = b; });
+}
+
+/* =====================================================================
+   File: nuovo, apri, salva, esporta
+   ===================================================================== */
+function normalize(n, parentHex) {
+  const type = n && n.type === 'hex' ? 'hex' : 'rect';
+  return {
+    id: uid(),
+    text: String(n?.text ?? ''),
+    type,
+    iter: !!n?.iter,
+    iterLabel: String(n?.iterLabel ?? ''),
+    branch: parentHex ? (n?.branch === 'F' ? 'F' : 'V') : null,
+    children: (Array.isArray(n?.children) ? n.children : []).map(c => normalize(c, type === 'hex'))
+  };
+}
+function loadDoc(root, name, handle) {
+  doc = {root: normalize(root, false)};
+  selId = doc.root.id;
+  fileName = name || null;
+  fileHandle = handle || null;
+  undoStack = []; redoStack = [];
+  dirty = false;
+  autosave();
+  render(); renderPanel();
+  requestAnimationFrame(fit);
+}
+function confirmDiscard() {
+  return !dirty || confirm('Ci sono modifiche non salvate. Vuoi continuare lo stesso?\n(Puoi prima premere Annulla e poi «Salva».)');
+}
+function newDoc() {
+  if (!confirmDiscard()) return;
+  loadDoc(mk('', 'rect'), null);
+  select(doc.root.id, true);
+}
+function slug() {
+  const t = (doc.root.text.trim() || 'albero').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+  return t || 'albero';
+}
+function serialize() {
+  return JSON.stringify({format: FORMAT, version: 1, savedAt: new Date().toISOString(), root: stripNoId(doc.root)}, null, 2);
+}
+function stripNoId(n) {
+  const o = {text: n.text, type: n.type};
+  if (n.iter) { o.iter = true; o.iterLabel = n.iterLabel; }
+  if (n.branch) o.branch = n.branch;
+  if (n.children.length) o.children = n.children.map(stripNoId);
+  return o;
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+async function save(asNew) {
+  const data = serialize();
+  const suggested = fileName || (slug() + '.albero.json');
+  if (window.showSaveFilePicker) {
+    try {
+      if (!fileHandle || asNew) {
+        fileHandle = await window.showSaveFilePicker({suggestedName: suggested,
+          types: [{description: 'Albero di decomposizione', accept: {'application/json': ['.json']}}]});
+      }
+      const w = await fileHandle.createWritable();
+      await w.write(data); await w.close();
+      fileName = fileHandle.name;
+      dirty = false; autosave(); updateStatus();
+      toast('💾 Salvato: ' + fileName);
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      fileHandle = null;   // il browser non permette il salvataggio diretto: si scarica il file
+    }
+  }
+  download(new Blob([data], {type: 'application/json'}), suggested);
+  fileName = suggested;
+  dirty = false; autosave(); updateStatus();
+  toast('💾 File scaricato: ' + suggested + ' (cartella Download)');
+}
+function readFile(file, handle) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const o = JSON.parse(r.result);
+      const root = o.root || (o.text !== undefined ? o : null);
+      if (!root) throw new Error('formato');
+      loadDoc(root, file.name, handle);
+      toast('📂 Aperto: ' + file.name);
+    } catch (e) {
+      toast('⚠ Questo file non è un albero di decomposizione valido.');
+    }
+  };
+  r.readAsText(file);
+}
+async function openFile() {
+  if (!confirmDiscard()) return;
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await window.showOpenFilePicker({types: [{description: 'Albero di decomposizione', accept: {'application/json': ['.json']}}]});
+      readFile(await h.getFile(), h);
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  $('#fileIn').value = '';
+  $('#fileIn').click();
+}
+
+function blobToDataURL(b) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+}
+async function fontFaceCSS() {
+  const f = FONTS[settings.font];
+  try {
+    if (f.google) {
+      let css = await (await fetch('https://fonts.googleapis.com/css2?family=' + f.google + '&display=swap')).text();
+      // tieni solo i sottoinsiemi latini
+      css = css.split('}').filter(b => b.includes('@font-face') && (/\/\* latin(-ext)? \*\//.test(b) || !/\/\*/.test(b))).join('}') + '}';
+      const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]))];
+      for (const u of urls) css = css.split(u).join(await blobToDataURL(await (await fetch(u)).blob()));
+      return css;
+    }
+    if (f.files) {
+      let css = '';
+      for (const [wt, u] of f.files) {
+        const d = await blobToDataURL(await (await fetch(u)).blob());
+        css += `@font-face{font-family:"OpenDyslexic";font-weight:${wt};src:url(${d}) format("opentype")}`;
+      }
+      return css;
+    }
+  } catch (e) {}
+  return '';
+}
+async function exportSVGString() {
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('xmlns', SVGNS);
+  drawInto(svg, true);
+  svg.setAttribute('width', L.W);
+  svg.setAttribute('height', L.H);
+  const css = await fontFaceCSS();
+  if (css) {
+    const st = document.createElementNS(SVGNS, 'style');
+    st.textContent = css;
+    svg.insertBefore(st, svg.firstChild);
+  }
+  return new XMLSerializer().serializeToString(svg);
+}
+async function exportPNG() {
+  toast('⏳ Preparo l\'immagine…');
+  const str = await exportSVGString();
+  const img = new Image();
+  img.onload = () => setTimeout(() => {
+    const scale = Math.max(1, Math.min(2, 14000 / Math.max(L.W, L.H)));
+    const c = document.createElement('canvas');
+    c.width = Math.round(L.W * scale); c.height = Math.round(L.H * scale);
+    const ctx = c.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, L.W, L.H);
+    c.toBlob(b => {
+      if (!b) return toast('⚠ Non riesco a creare l\'immagine. Prova «Immagine SVG».');
+      download(b, slug() + '.png');
+      toast('🖼️ Immagine PNG scaricata.');
+    }, 'image/png');
+  }, 200);
+  img.onerror = () => toast('⚠ Non riesco a creare l\'immagine. Prova «Immagine SVG».');
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(str);
+}
+async function exportSVG() {
+  const str = await exportSVGString();
+  download(new Blob([str], {type: 'image/svg+xml'}), slug() + '.svg');
+  toast('✏️ Immagine SVG scaricata.');
+}
+function outlineText() {
+  const out = [];
+  (function rec(n, ind, pre) {
+    const i = info(n.id);
+    let s = '    '.repeat(ind) + (pre || '') + i.code + ' – ' + (n.type === 'hex' ? '[SELEZIONE] ' : '') + (n.text.trim() || '…');
+    if (n.iter) s += '   [∀ per ogni ' + (n.iterLabel.trim() || '?') + ']';
+    out.push(s);
+    ordered(n).forEach(c => rec(c, ind + 1, n.type === 'hex' ? (c.branch === 'F' ? '(FALSO) ' : '(VERO) ') : ''));
+  })(doc.root, 0, '');
+  return out.join('\n');
+}
+function exportTxt() {
+  download(new Blob([outlineText() + '\n'], {type: 'text/plain;charset=utf-8'}), slug() + '.txt');
+  toast('📝 Schema in testo scaricato.');
+}
+
+/* =====================================================================
+   Lettura ad alta voce
+   ===================================================================== */
+const spokenCode = c => c.replace(/^P/, 'P ').replace(/\./g, ' punto ');
+function describe(n) {
+  const i = info(n.id);
+  let s = spokenCode(i.code) + '. ';
+  if (i.parent && i.parent.type === 'hex') s += 'Ramo ' + (n.branch === 'F' ? 'falso' : 'vero') + '. ';
+  s += (n.type === 'hex' ? 'Selezione. Condizione: ' : '') + (n.text.trim() || 'senza descrizione') + '. ';
+  if (n.iter) s += 'Si ripete per ogni ' + (n.iterLabel.trim() || 'elemento non indicato') + '. ';
+  const k = n.children.length;
+  if (k) s += 'Contiene ' + k + (k === 1 ? ' sottoproblema.' : ' sottoproblemi.');
+  return s;
+}
+function speak(text) {
+  if (!('speechSynthesis' in window)) return toast('La lettura ad alta voce non è disponibile in questo browser.');
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'it-IT';
+  const v = speechSynthesis.getVoices().find(v => /^it/i.test(v.lang));
+  if (v) u.voice = v;
+  u.rate = 0.9;
+  speechSynthesis.speak(u);
+}
+
+/* =====================================================================
+   Zoom e spostamento
+   ===================================================================== */
+const wrapEl = $('#canvasWrap');
+function setZoom(z, cx, cy) {
+  z = Math.max(0.2, Math.min(3, z));
+  const r = wrapEl.getBoundingClientRect();
+  cx = cx ?? r.width / 2; cy = cy ?? r.height / 2;
+  const px = (wrapEl.scrollLeft + cx) / zoom, py = (wrapEl.scrollTop + cy) / zoom;
+  zoom = z;
+  const svg = $('#tree');
+  svg.setAttribute('width', Math.round(L.W * zoom));
+  svg.setAttribute('height', Math.round(L.H * zoom));
+  $('#zoomVal').textContent = Math.round(zoom * 100) + '%';
+  wrapEl.scrollLeft = px * zoom - cx;
+  wrapEl.scrollTop = py * zoom - cy;
+}
+function fit() {
+  const r = wrapEl.getBoundingClientRect();
+  const z = Math.min((r.width - 20) / L.W, (r.height - 60) / L.H, 1.4);
+  setZoom(z);
+  wrapEl.scrollLeft = 0; wrapEl.scrollTop = 0;
+}
+function scrollToNode(id) {
+  const n = info(id)?.node; if (!n) return;
+  const r = wrapEl.getBoundingClientRect();
+  const x1 = (n._x - n._w / 2 - 30) * zoom, x2 = (n._x + n._w / 2 + 30) * zoom;
+  const y1 = (n._y - 30) * zoom, y2 = (n._y + n._h + 60) * zoom;
+  if (x1 < wrapEl.scrollLeft) wrapEl.scrollLeft = x1;
+  else if (x2 > wrapEl.scrollLeft + r.width) wrapEl.scrollLeft = x2 - r.width;
+  if (y1 < wrapEl.scrollTop) wrapEl.scrollTop = y1;
+  else if (y2 > wrapEl.scrollTop + r.height - 40) wrapEl.scrollTop = y2 - r.height + 40;
+}
+wrapEl.addEventListener('wheel', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const r = wrapEl.getBoundingClientRect();
+  setZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX - r.left, e.clientY - r.top);
+}, {passive: false});
+let pan = null;
+wrapEl.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.node') || e.target.closest('.legend')) return;
+  pan = {x: e.clientX, y: e.clientY, sl: wrapEl.scrollLeft, st: wrapEl.scrollTop};
+  wrapEl.classList.add('panning');
+});
+window.addEventListener('pointermove', e => {
+  if (!pan) return;
+  wrapEl.scrollLeft = pan.sl - (e.clientX - pan.x);
+  wrapEl.scrollTop = pan.st - (e.clientY - pan.y);
+});
+window.addEventListener('pointerup', () => { pan = null; wrapEl.classList.remove('panning'); });
+
+/* =====================================================================
+   Impostazioni di aspetto
+   ===================================================================== */
+function applySettings() {
+  const r = document.documentElement;
+  r.dataset.theme = settings.theme;
+  r.style.setProperty('--font', FONTS[settings.font].css);
+  r.style.setProperty('--ls', settings.letter + 'em');
+  r.style.setProperty('--lh', settings.lineH);
+  $('#sFont').value = settings.font;
+  $('#sSize').value = settings.fontSize; $('#oSize').textContent = settings.fontSize + ' px';
+  $('#sLetter').value = settings.letter; $('#oLetter').textContent = Math.round(settings.letter * 100) + '%';
+  $('#sLine').value = settings.lineH; $('#oLine').textContent = settings.lineH.toFixed(1);
+  $('#sColor').value = settings.colorMode;
+  $('#sAlign').value = settings.align;
+  $('#sFocus').checked = settings.focus;
+  $('#sLevels').checked = settings.levels;
+  $$('#bgPick button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === settings.theme)));
+  try { localStorage.setItem(LS_SET, JSON.stringify(settings)); } catch (e) {}
+  if (doc) { render(); renderPanel(); }
+  // ridisegna quando il carattere è pronto (le misure del testo cambiano)
+  if (document.fonts && document.fonts.load) {
+    const fam = FONTS[settings.font].css.split(',')[0];
+    Promise.all([document.fonts.load(`400 16px ${fam}`), document.fonts.load(`700 16px ${fam}`)])
+      .then(() => { if (doc) render(); }).catch(() => {});
+  }
+}
+function initSettingsUI() {
+  const sf = $('#sFont');
+  for (const k in FONTS) { const o = document.createElement('option'); o.value = k; o.textContent = FONTS[k].label; o.style.fontFamily = FONTS[k].css; sf.append(o); }
+  const names = {crema: 'Crema', bianco: 'Bianco', azzurro: 'Azzurro', giallo: 'Giallo chiaro', menta: 'Verde menta', scuro: 'Scuro'};
+  for (const k in THEMES) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.theme = k; b.title = names[k]; b.setAttribute('aria-label', 'Sfondo ' + names[k]);
+    b.style.background = THEMES[k].bg;
+    b.onclick = () => { settings.theme = k; applySettings(); };
+    $('#bgPick').append(b);
+  }
+  sf.onchange = () => { settings.font = sf.value; applySettings(); };
+  $('#sSize').oninput = e => { settings.fontSize = +e.target.value; applySettings(); };
+  $('#sLetter').oninput = e => { settings.letter = +e.target.value; applySettings(); };
+  $('#sLine').oninput = e => { settings.lineH = +e.target.value; applySettings(); };
+  $('#sColor').onchange = e => { settings.colorMode = e.target.value; applySettings(); };
+  $('#sAlign').onchange = e => { settings.align = e.target.value; applySettings(); };
+  $('#sFocus').onchange = e => { settings.focus = e.target.checked; applySettings(); };
+  $('#sLevels').onchange = e => { settings.levels = e.target.checked; applySettings(); };
+  $('#sReset').onclick = () => { settings = {...DEFAULT_SETTINGS}; applySettings(); };
+}
+
+/* =====================================================================
+   Messaggi
+   ===================================================================== */
+let toastT = null;
+function toast(msg, btnLabel, btnFn) {
+  $('#toastMsg').textContent = msg;
+  const b = $('#toastBtn');
+  b.hidden = !btnLabel;
+  if (btnLabel) { b.textContent = btnLabel; b.onclick = () => { btnFn(); $('#toast').classList.remove('show'); }; }
+  $('#toast').classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => $('#toast').classList.remove('show'), btnLabel ? 7000 : 3500);
+}
+
+/* =====================================================================
+   Eventi
+   ===================================================================== */
+$('#tree').addEventListener('click', e => { const g = e.target.closest('.node'); if (g) select(g.dataset.id); });
+$('#tree').addEventListener('dblclick', e => { const g = e.target.closest('.node'); if (g) select(g.dataset.id, true); });
+$('#outline').addEventListener('click', e => { const b = e.target.closest('.oitem'); if (b) select(b.dataset.id); });
+$('#checks').addEventListener('click', e => { const b = e.target.closest('.oitem'); if (b) select(b.dataset.id, true); });
+
+// testo del problema
+let typingSession = false;
+const ta = $('#txt');
+ta.addEventListener('focus', () => { typingSession = false; });
+ta.addEventListener('input', () => {
+  if (!typingSession) { pushHistory(); typingSession = true; }
+  sel().text = ta.value.replace(/\n/g, ' ');
+  dirty = true; autosave(); render();
+});
+ta.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Escape') { e.preventDefault(); ta.blur(); wrapEl.focus({preventScroll: true}); renderPanel(); }
+  if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); ta.blur(); addChild('V'); }
+});
+const il = $('#iterLabel');
+il.addEventListener('focus', () => { typingSession = false; });
+il.addEventListener('input', () => {
+  if (!typingSession) { pushHistory(); typingSession = true; }
+  sel().iterLabel = il.value;
+  $('#iterWarn').hidden = !!il.value.trim();
+  dirty = true; autosave(); render();
+});
+il.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); il.blur(); wrapEl.focus({preventScroll: true}); } });
+$('#iter').addEventListener('change', e => {
+  const n = sel();
+  commit(() => { n.iter = e.target.checked; });
+  if (n.iter && !n.iterLabel.trim()) il.focus();
+});
+$$('[data-type]').forEach(b => b.onclick = () => setType(b.dataset.type));
+$$('[data-branch]').forEach(b => b.onclick = () => setBranch(b.dataset.branch));
+$('#aChild').onclick = () => addChild();
+$('#aChildV').onclick = () => addChild('V');
+$('#aChildF').onclick = () => addChild('F');
+$('#aSib').onclick = addSibling;
+$('#aDel').onclick = delNode;
+$('#aLeft').onclick = () => move(-1);
+$('#aRight').onclick = () => move(1);
+$('#aSpeak').onclick = () => speak(describe(sel()));
+$('#speakAll').onclick = () => { const parts = []; walk(doc.root, n => parts.push(describe(n))); speak(parts.join(' ')); };
+$('#speakStop').onclick = () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); };
+
+// barra
+const closeMenu = () => $('#mExport').removeAttribute('open');
+$('#bNew').onclick = newDoc;
+$('#bOpen').onclick = openFile;
+$('#bSave').onclick = () => save(false);
+$('#bSaveAs').onclick = () => { closeMenu(); save(true); };
+$('#bPng').onclick = () => { closeMenu(); exportPNG(); };
+$('#bSvg').onclick = () => { closeMenu(); exportSVG(); };
+$('#bTxt').onclick = () => { closeMenu(); exportTxt(); };
+$('#bPrint').onclick = () => { closeMenu(); setTimeout(() => window.print(), 100); };
+document.addEventListener('click', e => { if (!e.target.closest('#mExport')) closeMenu(); });
+$('#bUndo').onclick = undo;
+$('#bRedo').onclick = redo;
+$('#bZoomIn').onclick = () => setZoom(zoom * 1.2);
+$('#bZoomOut').onclick = () => setZoom(zoom / 1.2);
+$('#bFit').onclick = fit;
+$('#bLook').onclick = () => $('#dlgLook').showModal();
+$('#bHelp').onclick = () => $('#dlgHelp').showModal();
+$('#bExample').onclick = () => { if (confirmDiscard()) { loadDoc(exampleTree(), null); dirty = true; updateStatus(); } };
+$$('[data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+$('#fileIn').onchange = e => { const f = e.target.files[0]; if (f) readFile(f); };
+
+// trascina un file sulla pagina
+let dragN = 0;
+window.addEventListener('dragenter', e => { if ([...e.dataTransfer.types].includes('Files')) { dragN++; $('#dropHint').classList.add('show'); } });
+window.addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; $('#dropHint').classList.remove('show'); } });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault(); dragN = 0; $('#dropHint').classList.remove('show');
+  const f = e.dataTransfer.files[0];
+  if (f && confirmDiscard()) readFile(f);
+});
+
+// tastiera
+document.addEventListener('keydown', e => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(e.shiftKey); return; }
+  if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); openFile(); return; }
+  if (e.target.closest && e.target.closest('input, textarea, select, dialog')) return;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (mod) return;
+  const n = sel(); if (!n) return;
+  const i = info(n.id);
+  // su pulsanti e menu Tab/Invio/frecce mantengono il loro comportamento normale
+  const onControl = e.target.closest && e.target.closest('button, summary, a');
+  if (onControl && e.key.startsWith('Arrow')) return;
+  switch (e.key) {
+    case 'Tab': if (onControl) return; e.preventDefault(); addChild('V'); break;
+    case 'Enter': if (onControl) return; e.preventDefault(); addSibling(); break;
+    case 'F2': e.preventDefault(); select(n.id, true); break;
+    case 'Delete': case 'Backspace': if (onControl) return; e.preventDefault(); delNode(); break;
+    case 'ArrowUp': e.preventDefault(); if (i.parent) select(i.parent.id); break;
+    case 'ArrowDown': { e.preventDefault(); const ch = ordered(n); if (ch.length) select(ch[0].id); break; }
+    case 'ArrowLeft': case 'ArrowRight': {
+      e.preventDefault();
+      const row = []; walk(doc.root, (m, d) => { if (d === i.depth) row.push(m); });
+      row.sort((a, b) => a._x - b._x);
+      const k = row.indexOf(n) + (e.key === 'ArrowLeft' ? -1 : 1);
+      if (row[k]) select(row[k].id);
+      break;
+    }
+  }
+});
+wrapEl.tabIndex = 0;
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+if (document.fonts) document.fonts.addEventListener?.('loadingdone', () => { if (doc) render(); });
+
+/* =====================================================================
+   Avvio
+   ===================================================================== */
+(function start() {
+  try { const s = JSON.parse(localStorage.getItem(LS_SET) || 'null'); if (s) settings = {...DEFAULT_SETTINGS, ...s}; } catch (e) {}
+  if (!FONTS[settings.font]) settings.font = DEFAULT_SETTINGS.font;
+  if (!THEMES[settings.theme]) settings.theme = DEFAULT_SETTINGS.theme;
+  initSettingsUI();
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_AUTO) || 'null'); } catch (e) {}
+  if (saved && saved.root) {
+    loadDoc(saved.root, saved.fileName);
+    dirty = !!saved.dirty;
+    updateStatus();
+    toast('↺ Ho ripreso il lavoro dall\'ultima volta.');
+  } else {
+    loadDoc(exampleTree(), null);
+    toast('📘 Questo è un esempio. Premi «Nuovo» per iniziare un albero tuo.');
+  }
+  applySettings();
+})();
+</script>
+</body>
+</html>
